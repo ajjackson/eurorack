@@ -1,0 +1,367 @@
+#+TITLE: Eurorack module design - concepts
+
+* Design principles
+
+** General rules
+   - Inputs should be able to survive indefinite exposure to +/- 12V
+   - Outputs should be able to survive brief short to +/- 12V
+   
+** My preferences
+   - Mini-pots are for setup, not performance
+   - Every "performable" control should have CV.
+     - Input attenuators and simple feedback loops don't need
+       CV. (Just use a VCA.)
+   - Sharing is interesting (1 CV -> many controls)
+     - This is something that is cumbersome to wire up and
+       space-saving in practice. A good motivation for a new module vs
+       patching from building blocks.
+   - CV inputs should have attenuators/attenuverters unless
+     - they are V/oct or otherwise have an "obvious/correct" scaling
+     - they are for gate signals (but adjustable threshold is nice)
+     - the CV is more of an "input" than control, and output level is
+       usefully related (e.g. sum, rectifier, ...)
+   - Modular synths are about versatility. A module should either be
+     - A fundamental building block
+     - A collection of fundamental building blocks with normalled connections
+     - Something that is very cumbersome/impossible to patch from
+       fundamental building blocks.
+       - Preferably, it can still be reduced to a fundamental block
+
+* Module concepts
+
+** Comparator logic
+   - Basic application: active gate combiner (e.g. multiple Euclidean
+     sequences to one pattern)
+   - Inspiration: As eurorack inputs pretty much require opamp
+     buffers, a comparator is essentially "free".
+   - A single VC threshold can be sent to multiple comparators, giving an
+     interesting performance control.
+
+   - Fundamental signal flow: 4x comparator -> OR logic -> OR/NOR outputs
+     - Controls: Threshold
+     - Inputs: 4x input, threshold
+     - Outputs: OR gate, NOR gate
+
+   Possible variations: XOR logic, inverted inputs
+   - Initial idea was to use CMOS quad OR, which can be swapped for
+     CMOS quad XOR. Two issues with that:
+     - quad XOR is poorly defined
+       - CD4030 has four 2-input XORs, these could be cascaded but
+         resulting truth table is not obvious.
+
+         | IN1 | IN2 | IN3 | IN4 | OUT |
+         |-----+-----+-----+-----+-----|
+         |   0 |   0 |   0 |   0 |   0 |
+         |   1 |   0 |   0 |   0 |   1 |
+         |   1 |   1 |   0 |   0 |   0 |
+         |   1 |   1 |   1 |   0 |   1 |
+         |   1 |   1 |   1 |   1 |   0 |
+         |   1 |   1 |   1 |   0 |   1 |
+         |   1 |   0 |   1 |   0 |   0 |
+         |   1 |   0 |   1 |   1 |   1 |
+         |   1 |   0 |   1 |   0 |   0 |
+
+         ...
+
+         That /seems/ to be "if (only one input is high) or (only one
+         input is low)" which would do the job of making interesting
+         patterns I guess.
+   
+     - quad OR chip is redundant once you've set up the unipolar input
+       diodes; you can just sum them into output comparator.
+   - Maybe we can have an analog switch between OR and XOR, or
+     simultaneous outputs? (Need an extra chip either way; switch vs
+     opamps. CD4016 quad switch is <50p so cost not an issue.)
+   - Would be interesting to have one inverted input (using a spare
+     NOT gate)
+     - This needs to be normed to +Vss, otherwise OR will always be on
+     - Could be switchable
+
+   - Implementation notes:
+     - Useful resource https://en.wikipedia.org/wiki/List_of_4000-series_integrated_circuits
+     - Chips with lots of NOT gates on are helpful; as well as
+       supplying logic for inverted input/output, remaining channels
+       can be used to drive LEDs. (Can push/pull in parallel to get
+       support higher current if needed.)
+       - This could be a hex inverter 4069 / 40106, but 4041 quad
+         buffer/inverter works very nicely with few wasted pins.
+
+** Emphasis drive
+
+   - Inspiration: emphasis-deemphasis processing (e.g. tape encoding)
+     to bias nonlinear processes
+   - This is difficult to do with standard modules as it requires a
+     very well-matched pair of EQ/filter stages, linked frequency/q
+     (if parametric) and inversely linked gain. Within a single module
+     we can achieve that by sending CV to multiple destinations, with
+     only (inverting) buffers between the split point and action.
+   - The trouble is that we need four VCAs per filter band for VC
+     polarisation in both "sides" of the process.
+     - Workaround 1: use a single-band parametric EQ. That's usually
+       enough in this application anyway.
+     - Workaround 2: Fix one side as boost-only and the other as
+       cut-only. If the user wants to reverse the order that can be
+       done by patching.
+   - A master emph/de-emph gain control would also be useful
+     (gain-staging another module!)
+     - Inverse-linking series unipolar VCAs could be tricky actually, do we need
+       an exp converter for that?
+   - To get the most out of this module you'll want to have a
+     clipping/distortion stage. We might as well include one.
+     - Tubescreamer-style soft-clipping with switchable diodes would be nice!
+       - Would be quite cool to switch with a CD4016 but maybe
+         overkill.  And not that useful with just two settings; maybe
+         a cooler scheme is possible? Can also switch hard/soft
+         clipping.
+       - Could do that with a diode ladder to turn on successive
+         switches. Would be very cool to go something like Si (soft)
+         -> Si (Asymm) -> Ge (hard) -> Si (hard)
+       - Shottky diodes can also be used for "soft-ish" hard clipping,
+         might be easier to get hold of than Ge. Hard part will be
+         picking diodes so that loudness isn't wildly different -
+         should be able to somewhat compensate with resistors? Or
+         multiple diodes in series.
+       - If looking for more diodes, remember transistors and MOSFETs
+         can also be used as diodes!
+     - Hard clipping also simple to add if there's space to control it.
+     - This can be fixed-gain if we already have a gain-staging
+       control. But generally diode clipper headroom is a bit low for
+       Eurorack so this section may need its own gain-staging
+       amplifiers to be useful with typical VCOs.
+   - An easy win on the implementation side: we need well-matched
+     frequency tracking of four filter poles in order to achieve a
+     pair of 6dB/8ve BP filters. This exists on a chip: SSI2140, which
+     at £4 is an updated take on the classic SSM2040. CEM 3320 should
+     also be able to do it.
+
+** Fixed-band EQ
+
+   - Inspiration: a 4-fixed-bands EQ was conceived as a nice user interface for an
+     emphasis-de-emphasis module. It could then double as a nice tool
+     to mix two overlapping mix elements by boosting and cutting
+     sympathetically.
+     - The trouble is that in a traditional cut/boost arrangement this
+       would need 4 VCAs per band!
+     - Alternatively we could remove the dry path and mix several
+       broad bands. This would give a slightly lumpy frequency
+       response, but that's not such a problem if it doesn't need to
+       cancel with an inverse operation. I think this is how the Maag
+       EQ4 works?
+   - Interesting aspects: if we have CV attenuverters to each band's
+     gain and norm them together, then a single CV input can be used
+     to "morph" between different curves.
+   - A nice feature of the Maag arrangement is that no master volume
+     control is really needed; you can compensate volume by
+     increasing/decreasing all the bands equally. (That is a lot
+     easier to do with stepped controls, though.)
+   - Implementation-wise, if we want a lot of clean EQ bands maybe
+     digital is the way to go? An arduino should be able to handle the
+     computation at a reasonable sample rate with RJB cookbook
+     filters. We can limit the CV bandwidth to avoid aliasing, in
+     which case the decent number of 16-bit ADC available should be
+     sufficient.  The problem is the 12-bit outputs, I'd rather get to
+     16-bit at least. Also, I don't see a lot of simple development
+     environments for a low-HP device. Electrosmith Daisy Seed might
+     be the best bet, but finding it harder than expected to get
+     examples of Eurorack setup and DAC quality.
+
+** Rungler
+
+   - Note that Rob Hordijk is quite protective of the Benjolin design;
+     things based on rungling should not be disseminated too widely
+     without asking nicely.
+     - But I get the impression that homebrew DIY things are very much
+       approved of...
+   - Benjolin looks like a lot of fun, but I don't really need the
+     extra oscillators and filter. A standalone rungler-like processor
+     would let me patch a Benjolin with other modules.
+   - Fancyyyyy Rung Divisions looks much more suitable; a combination
+     of an enhanced rungler and clock divider. Unfortunately it's out
+     of production. https://www.fancysynthesis.net/
+     - A new version is imminent, but will be a wide module with knobs
+       on. I really like module designs that don't need knobs.
+   - Basically I want a 4hp module that is just the left-hand side of
+     a Rung Divisions. The schematics are available so this shouldn't
+     be too hard.
+     - The RHS looks well cool, actually; clock divider with switchable
+       OR bus. But it could be a separate module.
+   - Apparently the successor to RD will have an expander for
+     Klee-like sequencing. Something I really like about the Rung
+     Divisions design already is that the multiple rungler outputs
+     are, effectively, parallel pre-set Klee sequencers. There's
+     probably room for more innovation in this area.
+     - e.g. an analog switch and resistors could be used to make a
+       CV-addressable set of "Klee presets"
+     - But multiple parallel outputs is simpler and cooler?
+       - How about a compromise: switchable variations on multiple
+         outputs?
+   - Modwiggler thread https://modwiggler.com/forum/viewtopic.php?t=155934
+     - Consider option to break the XOR feedback loop, simplifying behaviour
+     - Repeater shows a bare-bones version as part of instrument with
+       2 VCOs, mixer and wavefolder
+     - J3RK posts a really cool 8-stage design with LED indicators
+       - Those would look cute arranged in a little 4hp ring!
+       - Note that this isn't possible with the usual 4021 shift
+         register chip, which only exposes the last 3 stages as
+         outputs. https://www.ti.com/lit/ds/symlink/cd4021b.pdf
+         J3RK uses a 4094 instead. (It's not like we were
+         using the jam inputs anyway, and the chip price is about the
+         same...) https://www.ti.com/lit/ds/symlink/cd4094b.pdf
+         - Also this design uses a SIP resistor network. 4094 has the
+           outputs in two groups of four, so this could be very tidy
+           on stripboard!
+       - and a bunch of other cool circuits
+   - Electro-music thread on original Benjolin is interesting
+     https://electro-music.com/forum/viewtopic.php?t=38081
+     - Uses SSM2164 (quad VCA) for oscillator core. Gets the
+       exponential scaling for free.
+
+   - Possible panel elements:
+     - Inputs: clock, data, reset
+       - What does reset do to a manually-programmed sequence? Is
+         there any way to set up a shorter sequence with an 8-bit SR?
+         Move feedback point?
+
+     - Knobs: threshold, random
+
+     - Switches/buttons: write, clear, XOR feedback, manual clock
+       - (on)/off/(on) write/clear momentary toggle could work by
+         setting data comparator threshold; that isolates it from
+         input jack.
+       - Manual clock button not generally found on these things but
+         would be useful
+
+     - Feedback: 678 LEDs, LED ring, LED ring w/ 678 in another
+       colour, LED strip
+
+     - Outputs: Bits 6, 7, 8, RUNG, GNUR, XOR
+   
+** Bussed clock divider
+   - NLC's Divide and Conquer is very cool (fractional values!) but
+     lacks reset inputs.
+   - The right-hand side of Rung Divisions has a nice bus-switching
+     setup to direct clock dividers into a common OR stream.
+   - Could toggle between two different busses with SP3T switches,
+     like a switched mult.
+     - Is that actually useful though? Wouldn't you often want a
+       division to appear in both?
+     - With so many switches and ICs, might be an idea to _not_
+       provide individual outputs
+   - Would be nice to have logic other than OR... but how?
+     - For AND, could have all unselected streams normed to "high"
+     - For XOR, would need each selected stream to add a XOR stage to
+       bus.
+     - Some of those would need a few poles, perhaps using analog
+       switch ICs?
+       - This could add up to a lot of ICs...
+
+** Clippers/waveshapers
+   - Made a nice simple morphable shaper at https://tinyurl.com/ygknmmxr
+     - it's just a hard clipper subtracted from a soft clipper, with
+       variable gain on the hard clipper
+     - Mixing and VCAs are things people have in their rack
+       already. Simple DC-couple clippers are not.
+   - How about a simple 4hp 8-jack module with 4 inputs (normalised
+     together for easy parallel processing) and 4 outputs with
+     different clippers?
+     - Soft-clipping (feedback diodes)
+     - Hard-clipping (Silicon, Ge, Zener?)
+     - Opamp rail clipping (is this qualitatively different?)
+     - Clean boost
+   - Fixed gain based on +/- 5V is good for oscillator shaping and
+     accessible to other stuff.
+     - A clean boost (output-compensated?) would be rather useful
+       anyway. Could be on a toggle switch?
+   - Another interesting element of modular waveshapers, which is not
+     generally accessible, are the diode ladders used in wave folding.
+     If you provided access to each stage they could be patched into a
+     customisable wavefolder!
+     - Could also send them to +/- sum via on/off/on switches. Then
+       you can e.g. set high values to "off" for clipping, low values
+       "off" for fuzz, and create more folds with alternating +/-
+
+       #+begin_example
+        _____________
+       | BYO WAVEFOLD|
+       | IN  +/off/- |
+       |  0          |
+       |  1          |
+       |  0 ->  o-   |
+       |  2     |    |
+       |  0 -> -o    |
+       |  3     |    |
+       |  0 ->  o-   |
+       |  4     |    |
+       |  0 -> -o    |
+       |  5     |    |
+       |  0 ->  o-   |
+       |  6     |    |
+       |  0 -> -o    |
+       | GAIN   |MIX |
+       |  0     0    |
+       |_____________|
+
+       #+end_example
+
+       Ticks a lot of boxes! No pots, can break out for other purposes
+       (e.g. splitting CV to multiple destinations), sensible default
+       gain which can be manipulated by CV. 4hp theoretically possible
+       but tight, 6hp would be more resonable. Needs one VCA and a lot
+       of opamps. (Input/VCA section, 6 section output buffers, output
+       mixer.) Output mixer would /normally/ be done by mixing between
+       two inverting opamps in series, but it should also work to use
+       both inputs of one opamp?
+
+       Maybe skip the VCA, it's just on the input anyway. People have
+       VCAs already... But add a bit of fixed gain? Could set with a
+       jumper.
+
+*** Clipper/splitter circuit
+    - Proving more difficult than expected to get this hard-clipping
+      topology to work nicely
+      - LEDs might be the best clipping diode: high threshold
+        voltage and gives quite a sharp corner. (Red LED gives 1.5-2.0V drop)
+      - Another idea would be to use op-amp clipping. No need for
+        extra diodes, but a bit more gain-staging needed. (Inputs
+        should not clip to avoid TL072 phase inversion, so we go in
+        quiet, apply some gain to clip output, then compensate with
+        voltage divider.)
+        - Could lower headroom with a different voltage supply, but
+          that exacerbates phase-inversion so no real benefit
+    - Here's a proof of concept in circuitjs:
+      https://falstad.com/circuit/circuitjs.html?ctz=CQAgjCAMB0l3BWcMBMcUHYMGZIA4UA2ATmIxAUgoqoQFMBaMMAKACUQAWbFEHq-nzRQ+XWiKowELAIZdCnPtkIUMK7MpDFwSJkjDx4faMULZTkFMQIIwCQpCTYTZ0qWwY8CTt+zJDLADu8orYCLycCmKSQSHRqiqccFCxCGrxaeqakLGRocLcvII5AE5cPEJUhfFUBgEA5uURydXVMcEKApqdfIR4KR1Jvf2EGEV9KQAmID3KI0PVvJN0AGYyAK4ANgAuDJt0kyzToxEVJ8MgS6sbO3sHsefVPW0sjc9nC3iSKWWZSiqzbL+HLBDCQUITc5zAYgPBgRKcfpw9R4RQgkBgxScRGw+FcHHozHxInY-ro5F8VGwr6UtEsJJ+FAoUJUsIRAlQAD6Ck5kE5SWsnIQvNg8DIhHsKGFfJQvM52HpkD8UPBsOS0NqhG5nDlAuInJQ0Glorg4sl0oNnPh8pYZTwNOwVPFtJEdRycmd0IM9ou2jsID0wKMzlMjrIPjAnAwxFsCH6IdcDisNjsDn0hnRnqd6RewW9-Wq+YupS0OYqRbawNkGNVjsUFLrWh0Af9bqMYGgCmwzDU1nCkGYMfAne4YGwnDAVhIGAMUaD6L+GhUfxQPoX6VX-Wdm5h259nvCKQZyGZlzG4DsRSBUu1usgpCtfJgcEIN5lBuFCuCFNJuOXxF4EsKQQACtAcChQNqDNYgrct8H6EDANtZAfUQsDaEg+dYgsCDeBw85M3A846hGc93X8EYfWYbofX6f1AzbZJn3gaNMAQNJIDUZlRmxV1oLzOBSN4EiZiGEsRJ6aiATErC8zHaTankmY11eCia0UESMEPdoLxoui0CoPoyUVPwpIxYRJyiTw0XKW8+T1R8RUMM1XwtWVuBtIA
+      - Better version now in falstad folder
+
+    - Another interesting clipping topology: VC one-sided hard clip
+      https://www.tutorialspoint.com/linear_integrated_circuits_applications/linear_integrated_circuits_applications_clippers.htm
+      - Compared to a TS-style soft clipper, we take the output
+        _after_ the feedback diode.
+      - I don't see an easy way to make this two-sided, but it gives a
+        lovely hard clip (as output is pulled to Vref)
+
+** Unipolar/bipolar shifter
+
+   - An interesting circuit related to a clipper that I haven't really
+     seen in Eurorack is the /clamper/. This uses a capacitor,
+     resistor and diode to collect a bias voltage whenever the signal
+     exceeds the diode forward-voltage. Because the effect is damped
+     by the capacitor, this doesn't have to cause distortion: it
+     shifts a bipolar signal to a unipolar one (+/- an input bias).
+     https://electronicsreference.com/analog/clamper_circuit/
+   - Of course, converting from unipolar to bipolar is just a very
+     low-frequency RC high-pass filter.
+
+   - Could be useful to change the time constant to suit a given input
+     signal. At very small time constants we'll get distortion, with
+     large time constants it will react slowly.
+
+   - Easy to VC the reference point, but how useful is that? Basically
+     an offset control, could also be achived by mixing output.
+     - Might make an interesting distortion at audio rate?
+
+   - For modules that only take +ve CV input this could be a nice
+     supporting utility. Do I have any of those? Good for VCA/LPG
+     signals?
+     - Could use at CV input section of an Ardiuno-based module to
+       intelligently handle both unipolar and bipolar inputs. Could be
+       a bit confusing if unexpected though.
