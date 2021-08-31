@@ -26,6 +26,8 @@
      - Something that is very cumbersome/impossible to patch from
        fundamental building blocks.
        - Preferably, it can still be reduced to a fundamental block
+   - Modules are much more useful when they work for both CV and
+     audio. (i.e. avoid AC-coupling, avoid ADCs with low sampling rates.)
 
 * Module concepts
 
@@ -116,6 +118,19 @@
        - Could do that with a diode ladder to turn on successive
          switches. Would be very cool to go something like Si (soft)
          -> Si (Asymm) -> Ge (hard) -> Si (hard)
+       - Easier to get working than a diode ladder might be an LM3916
+         dot/bar display driver
+         https://cdn.sparkfun.com/datasheets/Components/General%20IC/lm3916.pdf
+         - Although it wants to regulate current flow, so
+           high-impedence switch inputs might not be directly
+           compatible. And it seems wasteful to drive current into
+           ground. You can set the current with a reference load,
+           though.  "Approximately 10 times this current will be drawn
+           through each lighted LED" so a 1M load and 100k pull-downs
+           should be ok.
+         - At the very least the block diagram gives another way of
+           doing this fairly precisely: using a resistor ladder with
+           comparators. LM339 quad comparator maybe?
        - Shottky diodes can also be used for "soft-ish" hard clipping,
          might be easier to get hold of than Ge. Hard part will be
          picking diodes so that loudness isn't wildly different -
@@ -164,6 +179,93 @@
      environments for a low-HP device. Electrosmith Daisy Seed might
      be the best bet, but finding it harder than expected to get
      examples of Eurorack setup and DAC quality.
+   - With analogue filters it would be fairly simple to also provide
+     individual pre-VCA filter outputs. Is that useful? Would allow
+     module to simultaneously act as a fixed multiband splitter. (And
+     allow e.g. mid-high output to trigger envelope to low gain.)
+   - A parallel soft-clipped output would be easy to include, making a
+     tweakable distortion unit.
+    - Depending on the complexity of CV scaling, we could get a master
+      VCA quite "cheaply" that mixes extra CV into all bands
+
+*** Proposed features/interface
+    - 4-band EQ consisting of four parallel filter sections: LP,
+      low-mid BP, high-mid BP, HP
+      - Each filter has 6dB/octave (single-pole) slopes, creating a
+        gentle set of crossovers. By spacing these correctly the
+        response shouldn't be _too_ lumpy, but will be less
+        transparent than a classic add/subtract EQ arrangement.
+
+    - Each band can be controlled manually or by CV, in the following
+      scheme:
+      - Each band has a CV input with full-sized attenuverter,
+        normalled to the CV input above it. This allows a single CV
+        input to e.g. cut lows and boost low-mid with intuitive
+        controls.
+      - Top CV is normalled to positive voltage, giving manual EQ when
+        no CV is plugged in.
+      - With 0V input, output is approximately unity.
+      - Positive/negative input are approximately symmetric
+        cuts/boosts in dB (i.e. gain changes on log-scale)
+      - With all attenuverters at max/min, common input CV gives gain
+        boost/cut with roughly flat frequency response.
+      - Input CV range is +/- 5V, ok to clip beyond that
+
+    - Bandpass filters have different bandwidths in order to
+      achieve the most useful frequency selections. A useful shift
+      in character could be achieved by using an analog switch to
+      modify RC values. This would be the same direction for all
+      modified values (i.e. no inverter needed to control this!)
+      Values would be changed in pairs to keep crossovers aligned.
+      - Move LP and lower limit of BP1 to change bass response
+      - Move higher limit of BP1 and lower limit of BP2 for mids control
+      - Move HP and higher limit of BP2 for different high response.
+
+      Clearly the mids shift is especially useful. Not clear which
+      is then the more useful of lows and highs: low shift is nice
+      for kick/bass eq, but high shift may help make best use of
+      upper-mid band after shifting.      
+
+    - Panel:
+
+      #+begin_example
+
+         ---------
+        |   Hi    |
+        | 0---O   |
+        | Hi-Mid  |
+        | 0---O   |
+        | Lo-Mid  |
+        | 0---O   |
+        |  Low    |
+        | 0---O   |
+        |  Shift  |
+        | 0  -o   |
+        |In  Out  |
+        | 0 0 0 0 |
+        |  VCA DST|
+        |_________|
+
+      #+end_example
+
+    - This includes a few optional features. Suggest that initial
+      prototype skips the master VCA and distortion output; see how we
+      do for space/complexity. But these add whole extra functions for
+      not many extra components, so worth considering.
+
+*** Implementation details
+    - VCAs mostly work with much lower unipolar control voltages, and
+      more range on negative (attenuation) side
+      - Some considerable offset/scaling effort is going to be needed
+        to get from nice +/- 5V range to a safe VCA range with 0V
+        unity. We'd like to make a healthy gain range available (at
+        least +/- 18dB?) so assume that VCA is usually attenuating and
+        makeup gain is supplied.
+    - SSI Quad VCA chip looks very promising as this should give
+      fairly consistent exponential control over four channels
+      simultaneously. Might still need a bit of trimming? VCAs seem to
+      need a lot of trimming in general...
+
 
 ** Rungler
 
@@ -365,3 +467,40 @@
      - Could use at CV input section of an Ardiuno-based module to
        intelligently handle both unipolar and bipolar inputs. Could be
        a bit confusing if unexpected though.
+
+** Ultrasonic processing
+
+   - Several interesting processes can be clocked by an ultrasonic
+     oscillator, e.g.
+     - mod-demod audio encoding
+     - NLC digital filter simulator
+     - Switched-cap filter (implemented in the LTC1064 chip)
+       - Fabrica does it with a 4066 - what rate limit does that impose?
+         https://github.com/vauxflores/Electronics/tree/master/Eurorack/Fabrica
+       - CD4066B datasheet mentions control repetitions in MHz and
+         "propogation delay" of around 20 ns - so should be just about
+         fast enough for glitches to not dominate behaviour?
+       - The technical purpose of switched-cap filters is for
+         implementing very steep filters at accurate, high
+         frequencies. They absolutely can go to lower frequencies, but
+         the clock is running at 50x the cutoff frequency which is
+         audible for low frequencies. Could also get aliasing?
+     - Sampling processors: Sample/hold, shift register, "rungling"
+       - Especially Squid Axon with its four clocks per new sample...
+       - Can generate intentional aliasing by resampling at audio rate
+         without a filter
+     - Delta-sigma modulation (i.e. "1-bit" ADC/DAC)
+   - Would be nice to have proper V/octave control over these so they
+     can be related to audible VCO frequencies.
+     - Or use a frequency multiplier? CD4046B phase-locked loop VCO
+       can go up to 1.2 MHz.
+       - It might make a lot of sense to use a CD4046B as the main VCO
+         source actually. It's cheap and voltage-controllable.
+   - This whole class of processing falls squarely into "hard to do
+     in-the-box", which is really what I'm interested in modular for
+     :-D
+     - That being said, some oversampled Reaktor simulations might
+       help with dialing in useful parameter ranges...
+   - An interesting thing to introduce to this stuff in general is
+     jitter. What's the best way to introduce small timing
+     inconsistencies to a square wave oscillator?
