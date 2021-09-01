@@ -504,3 +504,6 @@
    - An interesting thing to introduce to this stuff in general is
      jitter. What's the best way to introduce small timing
      inconsistencies to a square wave oscillator?
+   - For some switched-capacitor/resistor arrangements we can manipulate the effective value with the /pulse width/ of the switching.
+     - A single high-frequency sawtooth clock could drive multiple filters using (relatively cheap/simple) VC comparators.
+     - That seems like a great source of multiple somewhat lofi VCFs. What could we do with those?
