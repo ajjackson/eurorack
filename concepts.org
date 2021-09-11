@@ -183,10 +183,27 @@
      individual pre-VCA filter outputs. Is that useful? Would allow
      module to simultaneously act as a fixed multiband splitter. (And
      allow e.g. mid-high output to trigger envelope to low gain.)
+     - Worth mentioning that quite a nice multiband splitter module
+       exists in the form of LA61 LR4. This has VC crossovers and no
+       mixing section - but of course would pair well with a (VC)
+       mixer. No DIY version though!
+     - Other than that, all I can find is a cheap fixed-band splitter
+       from EMW and a presumably unobtainium 4-band VC Cwejman module.
+     - I'm not really a huge fan of multi-band processing, but it does
+       seem under-served. I guess people can use other filters
+       anyway. Any SVF is a 2-band crossover, right?
    - A parallel soft-clipped output would be easy to include, making a
      tweakable distortion unit.
-    - Depending on the complexity of CV scaling, we could get a master
-      VCA quite "cheaply" that mixes extra CV into all bands
+     - Depending on the complexity of CV scaling, we could get a master
+       VCA quite "cheaply" that mixes extra CV into all bands
+
+   - Hmm, just as this concept was coming together Boredbrain have
+     announced a 10hp 5-band VC stereo EQ. Still seems worth working
+     on this one: DIY, mono, smaller, broader, shift-switch is quite
+     different overall. But this one must be absolutely stuffed with
+     VCAs? Even if "balance" and "level" bias existing VCAs and
+     crossovers are used to avoid need for subtraction, this is 10
+     VCAs and a whole bunch of trimming/calibration. Or it's digital?
 
 *** Proposed features/interface
     - 4-band EQ consisting of four parallel filter sections: LP,
@@ -195,6 +212,9 @@
         gentle set of crossovers. By spacing these correctly the
         response shouldn't be _too_ lumpy, but will be less
         transparent than a classic add/subtract EQ arrangement.
+        - If the stages are obtained by subtracting a series of
+          low-pass filters, then they _should_ be able to recombine
+          perfectly?
 
     - Each band can be controlled manually or by CV, in the following
       scheme:
@@ -370,6 +390,9 @@
      - Hard-clipping (Silicon, Ge, Zener?)
      - Opamp rail clipping (is this qualitatively different?)
      - Clean boost
+     - OML Sinecore sine-shaper-on-a-chip
+     - Saw-to-triangle function: either a full rectifier or triangle folder
+     - Panel accessible-trimpots would be great for setting gain
    - Fixed gain based on +/- 5V is good for oscillator shaping and
      accessible to other stuff.
      - A clean boost (output-compensated?) would be rather useful
@@ -507,3 +530,40 @@
    - For some switched-capacitor/resistor arrangements we can manipulate the effective value with the /pulse width/ of the switching.
      - A single high-frequency sawtooth clock could drive multiple filters using (relatively cheap/simple) VC comparators.
      - That seems like a great source of multiple somewhat lofi VCFs. What could we do with those?
+   - Nearest thing out there seems to be WMD synchrodyne, which
+     implements VCO -> PLL -> switched-cap filter
+     - In practice the character/workflow is rather dominated by wobbly PLL wrangling
+     - As usual for WMD, the module has tight control spacing and is a tad pricy at ~£350-400
+     - Still, it seems like a pretty comprehensive take on placing
+       that chain under VC. Good stuff, no point in going the same way.
+   - It may be a bad idea to send ultrasonic signals through Eurorack
+     inputs/outputs. The format is not really engineered for
+     them. Generally the advice with HF is to keep paths very short in
+     order to a) avoid capacitative losses b) avoid crosstalk with
+     your other stuff.
+     - The synchrodyne allows an external clock for the PLL but not
+       for the filter. It does allow PLL output, but that has a wide
+       useful range.
+     - Maybe near-ultrasound is fine. But radio is not far
+       away... (Strictly speaking, audio range is Very Low Frequency
+       (VLF) radio.)
+   - Barton SRV is a PWM-based filter, providing two resonant SVFs
+     with multiple outputs.
+     https://www.bartonmusicalcircuits.com/srv/ There is an inbuilt
+     fixed oscillator and external clock input. Very nice!
+     - Switched-resistor rather than switched-capacitor
+       - The two are not so different really; switched-capacitors also
+         replace resistors.
+     - Demo vid suggests the LPF doesn't really "close" completely?
+       Should be tweakable.
+     - Audio-rate clock vowel sound demo is rad. I should build one of
+       these.
+   - PWM control seems an interesting general alternative to a vactrol
+     or VCA. How about a PWM VCA? Presumably this is how PWM
+     compressors work?
+     - For a PWM VCA, just send the input signal through the
+       PWM-controlled switch. At zero pulse-width you have a perfect
+       "off" state. At 50:50 you have half gain, so will need some
+       makeup.
+     - What about nonlinear elements? Would this be one way to make a
+       morphable transfer function?
