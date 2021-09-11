@@ -88,6 +88,14 @@
        - This could be a hex inverter 4069 / 40106, but 4041 quad
          buffer/inverter works very nicely with few wasted pins.
 
+   - Common-mode voltage reversal is a concern for TL072 etc. Possible
+     that module will get some hot negative inputs on both
+     sides. Possible precautions:
+     - Scale down inputs with voltage divider - costs precision
+     - clip inputs with 10V ESD zeners - costs range (and money)
+     - use MCP6002/MCP6004 instead; these opamps are also cheap and
+       designed for rail-to-rail inputs.
+
 ** Emphasis drive
 
    - Inspiration: emphasis-deemphasis processing (e.g. tape encoding)
