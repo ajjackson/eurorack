@@ -387,6 +387,11 @@
        colour, LED strip
 
      - Outputs: Bits 6, 7, 8, RUNG, GNUR, XOR
+
+   - A lot of what I want can be done with NLC 8-bit cipher. There is
+     something to be said for simplifying the sequencing/Turing
+     Machine workflow, but maybe I should build one of those and spend
+     time with it before returning to this idea.
    
 ** Bussed clock divider
    - NLC's Divide and Conquer is very cool (fractional values!) but
@@ -413,20 +418,31 @@
        variable gain on the hard clipper
      - Mixing and VCAs are things people have in their rack
        already. Simple DC-couple clippers are not.
-   - How about a simple 4hp 8-jack module with 4 inputs (normalised
-     together for easy parallel processing) and 4 outputs with
-     different clippers?
-     - Soft-clipping (feedback diodes)
-     - Hard-clipping (Silicon, Ge, Zener?)
-     - Opamp rail clipping (is this qualitatively different?)
-     - Clean boost
-     - OML Sinecore sine-shaper-on-a-chip
-     - Saw-to-triangle function: either a full rectifier or triangle folder
-     - Panel accessible-trimpots would be great for setting gain
-   - Fixed gain based on +/- 5V is good for oscillator shaping and
-     accessible to other stuff.
-     - A clean boost (output-compensated?) would be rather useful
-       anyway. Could be on a toggle switch?
+
+    - Proving more difficult than expected to get this hard-clipping
+      topology to work nicely
+      - LEDs might be the best clipping diode: high threshold
+        voltage and gives quite a sharp corner. (Red LED gives 1.5-2.0V drop)
+      - Another idea would be to use op-amp clipping. No need for
+        extra diodes, but a bit more gain-staging needed. (Inputs
+        should not clip to avoid TL072 phase inversion, so we go in
+        quiet, apply some gain to clip output, then compensate with
+        voltage divider.)
+        - Could lower headroom with a different voltage supply, but
+          that exacerbates phase-inversion so no real benefit
+    - Here's a proof of concept in circuitjs:
+      https://falstad.com/circuit/circuitjs.html?ctz=CQAgjCAMB0l3BWcMBMcUHYMGZIA4UA2ATmIxAUgoqoQFMBaMMAKACUQAWbFEHq-nzRQ+XWiKowELAIZdCnPtkIUMK7MpDFwSJkjDx4faMULZTkFMQIIwCQpCTYTZ0qWwY8CTt+zJDLADu8orYCLycCmKSQSHRqiqccFCxCGrxaeqakLGRocLcvII5AE5cPEJUhfFUBgEA5uURydXVMcEKApqdfIR4KR1Jvf2EGEV9KQAmID3KI0PVvJN0AGYyAK4ANgAuDJt0kyzToxEVJ8MgS6sbO3sHsefVPW0sjc9nC3iSKWWZSiqzbL+HLBDCQUITc5zAYgPBgRKcfpw9R4RQgkBgxScRGw+FcHHozHxInY-ro5F8VGwr6UtEsJJ+FAoUJUsIRAlQAD6Ck5kE5SWsnIQvNg8DIhHsKGFfJQvM52HpkD8UPBsOS0NqhG5nDlAuInJQ0Glorg4sl0oNnPh8pYZTwNOwVPFtJEdRycmd0IM9ou2jsID0wKMzlMjrIPjAnAwxFsCH6IdcDisNjsDn0hnRnqd6RewW9-Wq+YupS0OYqRbawNkGNVjsUFLrWh0Af9bqMYGgCmwzDU1nCkGYMfAne4YGwnDAVhIGAMUaD6L+GhUfxQPoX6VX-Wdm5h259nvCKQZyGZlzG4DsRSBUu1usgpCtfJgcEIN5lBuFCuCFNJuOXxF4EsKQQACtAcChQNqDNYgrct8H6EDANtZAfUQsDaEg+dYgsCDeBw85M3A846hGc93X8EYfWYbofX6f1AzbZJn3gaNMAQNJIDUZlRmxV1oLzOBSN4EiZiGEsRJ6aiATErC8zHaTankmY11eCia0UESMEPdoLxoui0CoPoyUVPwpIxYRJyiTw0XKW8+T1R8RUMM1XwtWVuBtIA
+      - Better version now in falstad folder
+
+    - Another interesting clipping topology: VC one-sided hard clip
+      https://www.tutorialspoint.com/linear_integrated_circuits_applications/linear_integrated_circuits_applications_clippers.htm
+      - Compared to a TS-style soft clipper, we take the output
+        _after_ the feedback diode.
+      - I don't see an easy way to make this two-sided, but it gives a
+        lovely hard clip (as output is pulled to Vref)
+
+
+*** Clipper/splitter circuit
    - Another interesting element of modular waveshapers, which is not
      generally accessible, are the diode ladders used in wave folding.
      If you provided access to each stage they could be patched into a
@@ -471,28 +487,46 @@
        VCAs already... But add a bit of fixed gain? Could set with a
        jumper.
 
-*** Clipper/splitter circuit
-    - Proving more difficult than expected to get this hard-clipping
-      topology to work nicely
-      - LEDs might be the best clipping diode: high threshold
-        voltage and gives quite a sharp corner. (Red LED gives 1.5-2.0V drop)
-      - Another idea would be to use op-amp clipping. No need for
-        extra diodes, but a bit more gain-staging needed. (Inputs
-        should not clip to avoid TL072 phase inversion, so we go in
-        quiet, apply some gain to clip output, then compensate with
-        voltage divider.)
-        - Could lower headroom with a different voltage supply, but
-          that exacerbates phase-inversion so no real benefit
-    - Here's a proof of concept in circuitjs:
-      https://falstad.com/circuit/circuitjs.html?ctz=CQAgjCAMB0l3BWcMBMcUHYMGZIA4UA2ATmIxAUgoqoQFMBaMMAKACUQAWbFEHq-nzRQ+XWiKowELAIZdCnPtkIUMK7MpDFwSJkjDx4faMULZTkFMQIIwCQpCTYTZ0qWwY8CTt+zJDLADu8orYCLycCmKSQSHRqiqccFCxCGrxaeqakLGRocLcvII5AE5cPEJUhfFUBgEA5uURydXVMcEKApqdfIR4KR1Jvf2EGEV9KQAmID3KI0PVvJN0AGYyAK4ANgAuDJt0kyzToxEVJ8MgS6sbO3sHsefVPW0sjc9nC3iSKWWZSiqzbL+HLBDCQUITc5zAYgPBgRKcfpw9R4RQgkBgxScRGw+FcHHozHxInY-ro5F8VGwr6UtEsJJ+FAoUJUsIRAlQAD6Ck5kE5SWsnIQvNg8DIhHsKGFfJQvM52HpkD8UPBsOS0NqhG5nDlAuInJQ0Glorg4sl0oNnPh8pYZTwNOwVPFtJEdRycmd0IM9ou2jsID0wKMzlMjrIPjAnAwxFsCH6IdcDisNjsDn0hnRnqd6RewW9-Wq+YupS0OYqRbawNkGNVjsUFLrWh0Af9bqMYGgCmwzDU1nCkGYMfAne4YGwnDAVhIGAMUaD6L+GhUfxQPoX6VX-Wdm5h259nvCKQZyGZlzG4DsRSBUu1usgpCtfJgcEIN5lBuFCuCFNJuOXxF4EsKQQACtAcChQNqDNYgrct8H6EDANtZAfUQsDaEg+dYgsCDeBw85M3A846hGc93X8EYfWYbofX6f1AzbZJn3gaNMAQNJIDUZlRmxV1oLzOBSN4EiZiGEsRJ6aiATErC8zHaTankmY11eCia0UESMEPdoLxoui0CoPoyUVPwpIxYRJyiTw0XKW8+T1R8RUMM1XwtWVuBtIA
-      - Better version now in falstad folder
 
-    - Another interesting clipping topology: VC one-sided hard clip
-      https://www.tutorialspoint.com/linear_integrated_circuits_applications/linear_integrated_circuits_applications_clippers.htm
-      - Compared to a TS-style soft clipper, we take the output
-        _after_ the feedback diode.
-      - I don't see an easy way to make this two-sided, but it gives a
-        lovely hard clip (as output is pulled to Vref)
+*** Clipping pallette
+
+   - How about a simple module with 4-6 inputs (normalised
+     together for easy parallel processing) and outputs with
+     different clippers?
+     - Soft-clipping (feedback diodes)
+     - Hard-clipping (Silicon, Ge, Zener?)
+     - Opamp rail clipping (is this qualitatively different?)
+     - Clean boost
+     - OML Sinecore sine-shaper-on-a-chip
+     - Saw-to-triangle function: either a full rectifier or triangle folder
+     - Panel accessible-trimpots would be great for setting gain
+   - Fixed gain based on +/- 5V is good for oscillator shaping and
+     accessible to other stuff.
+     - A clean boost (output-compensated?) would be rather useful
+       anyway. Could be on a toggle switch?
+   - If your signal doesn't reach the clipping threshold, then a hard
+     clipper can also be used as clean boost.
+   - Rather than providing optional boost; could be simpler to provide
+     e.g. +6dB gain on all clippers, and an optional _pad_. Then we
+     can choose whether to use it before or after clipping.
+     - This also makes it easier to use the clippers with VCAs/LPGs
+       that don't add gain.
+   - Some of the folders can give big peaks - typically followed by
+     soft clipping. This could be achieved with series
+     normalisation...
+
+     - e.g. chain 1: hard clip -> fold -> soft clip -> pad
+     - chain 2: pad -> asymmetric fold -> deep soft clip
+
+     Hmm, those two could be connected actually!
+
+     - Soft clipping before a wavefolder could also limit the folder
+       range, as long as they are appropriately calibrated.
+
+     - hard clip -> asymm soft clip -> symm fold -> pad -> asymm fold
+       -> symm soft clip
+
+   - 4hp could be a squeeze for all those opamps!
 
 *** Other folders
     - The Buchla wavefolder design is interesting as it doesn't use
@@ -507,6 +541,19 @@
       - The snag is that the slopes all depend on opamp resistors. Not
         a big problem for a musical wavefolder but might be tricky to
         design a precision splitter.
+    - NLC Product uses wavefolders from Stork paper. I've separated
+      out the first one as stork-folder-1 in Falstad
+      folder. Interesting thing about these folders is that they are
+      quite asymmetric by design; using op-amp to diff signal before
+      and after diode drop.
+      - This seems to require 3 op-amps total: input buffer/gainstage,
+        diff stage, output buffer/gainstage. The diode voltage drop
+        determines the size of the inverted/unfolded region. For Si
+        diodes this is small and we need some gain-staging to use
+        effectively with 5V p/p signals. We could eliminate the output
+        buffer with a larger diode drop - using series diodes or blue
+        LEDs?
+      
 *** Other shapers
     - Interesting tri-sin shaper discussed at MW
       https://modwiggler.com/forum/viewtopic.php?f=17&t=253285
