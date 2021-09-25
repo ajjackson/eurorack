@@ -295,6 +295,28 @@
       need a lot of trimming in general...
 
 
+** Multi-mode filter
+   - Interesting document from SSI describes filter design with the
+     SSI2164 quad VCA. http://www.soundsemiconductor.com/downloads/AN701.pdf
+   - Table 1 shows how the stages of a cascaded 4-pole LP filter can
+     be combined in different ratios to obtain many different filter
+     responses (including HP, BP, AP).
+   - Massively-multimode filters like the Polaris might use this sort
+     of scheme with a microcontroller and analog switch ICs to toggle
+     different arrangements.
+   - In principle you could run all these inputs into a mixer to dial
+     in custom filter responses.
+     - This is another case where a VC morphing mixer would be
+       useful. Maybe that should be its own module, and then the
+       filter component is just a 4-pole LP with stage outputs?
+     - 5 stages could be a bit tricky to handle, is there a useful
+       macro/gang option to make this control space more manageable?
+       - Could prototype that in Reaktor?
+     - 4 is a much nicer number when it comes to VCAs, opamps etc...
+   - Is there any reason you couldn't do the same thing with SSI2140?
+     Would that be easier? We don't need independent frequency control
+     in this application.
+
 ** Rungler
 
    - Note that Rob Hordijk is quite protective of the Benjolin design;
@@ -471,6 +493,30 @@
         _after_ the feedback diode.
       - I don't see an easy way to make this two-sided, but it gives a
         lovely hard clip (as output is pulled to Vref)
+
+*** Other folders
+    - The Buchla wavefolder design is interesting as it doesn't use
+      diodes; the clipping is done with op-amp rails.
+      - Instead of subtracting the clipped voltage, it obtains a
+        similar "point" waveform by tracking the current in the
+        feedback loop of the clipping opamp.
+      - Managed to get a circuitjs model of one stage working, see the
+        folder.
+      - This design could also be used to make a CV "dead spot" but
+        surely diodes are cheaper.
+      - The snag is that the slopes all depend on opamp resistors. Not
+        a big problem for a musical wavefolder but might be tricky to
+        design a precision splitter.
+*** Other shapers
+    - Interesting tri-sin shaper discussed at MW
+      https://modwiggler.com/forum/viewtopic.php?f=17&t=253285
+      - For some reason this doesn't do any shaping in
+        CircuitJS. Maybe the JFET is too ideal?
+      - Otherwise seems quite forgiving. The original paper suggests
+        using a trimmer on one side to get an exact resistance match
+        (including internal resistances) and minimise even harmonics.
+      - Would be nice to cascade this with a linear wavefolder to get a
+        sine folder?
 
 ** Unipolar/bipolar shifter
 
