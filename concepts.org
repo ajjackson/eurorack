@@ -752,3 +752,24 @@
         maybe a normalised input would allow alternative signals to be
         introduced? Should provide a decent (non-VC) gain control for
         ad-hoc calibration then.
+      - It's not so trivial to get a triangle wave from a DC-coupled
+        saw input, because it needs to be offset by half the
+        peak-to-peak voltage. i.e. it would be level dependent - not
+        easy to dial out the DC offset "by ear" before subsequent
+        shapers.
+        - Saw-tri by wavefolding would be easier to set by ear, but
+          maybe a more complex circuit
+        - Or we just rely on the master VCO to take care of it.
+
+    - So as a minimal building block to support this kind of
+      synthesis, we could split the patch to:
+
+      - VCO providing simultaneous saw and triangle waves at
+        fundamental frequency. (Plenty of existing options!)
+
+      - Tri -> 2x, 3x, 4x waveshaper with built-in mixer
+        - or saw -> 1x, 2x, 3x, 4x triangles with tri mixer and saw
+          thru
+
+      - Saw-sine shaper with multiple folds (FM Aid, Sinulator)
+        - These also provide CV over FM depth
