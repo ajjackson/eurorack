@@ -551,6 +551,11 @@
       - The snag is that the slopes all depend on opamp resistors. Not
         a big problem for a musical wavefolder but might be tricky to
         design a precision splitter.
+    - Was quite interested in the Auxren Tripsquad which is based on
+      Serge Triple Waveshaper. The trouble with this transfer function
+      is that it always rectifies the input. That's nice for saw waves
+      but means cleaner/subtle applications are just impossible. I'd
+      rather separate rectifier and folding stages for more versatility.
     - NLC Product uses wavefolders from Stork paper. I've separated
       out the first one as stork-folder-1 in Falstad
       folder. Interesting thing about these folders is that they are
@@ -563,7 +568,6 @@
         effectively with 5V p/p signals. We could eliminate the output
         buffer with a larger diode drop - using series diodes or blue
         LEDs?
-      
 *** Other shapers
     - Interesting tri-sin shaper discussed at MW
       https://modwiggler.com/forum/viewtopic.php?f=17&t=253285
@@ -574,6 +578,30 @@
         (including internal resistances) and minimise even harmonics.
       - Would be nice to cascade this with a linear wavefolder to get a
         sine folder?
+
+** Rectifier
+   - I love the idea of the half-rectifying splitter combiner BHWR by
+     CFM. The trouble is that it's passive; while that does enable
+     bi-directional usage, it can lead to inconsistent behaviour.
+     - How about a fully buffered version with explicit split/merge
+       sections?
+     - Could also achieve that by putting a quad buffer next to a
+       BHWR. Can we get some other features?
+       - Obvious tweak would be inverting input for NLC-style
+         diff-rect.
+         - taking diff of two half-rect stages is useful to get full
+           rect. But to do the BHWR split/join trick we also need a
+           straight sum option.
+       - NE Pura Ruina is a multi-stage full rect. Presumably the way
+         to make that work is put ac-coupling between the stages...
+
+     - diff-rect: IN1, IN2 -> MAX(IN1 - IN2, 0), MIN(IN1 - IN2, 0)
+       - NLC staple!
+     - rect-diff: IN1, IN2 -> MAX(IN1, 0) - MIN(IN2, 0), MIN(IN1, 0) - MAX(IN2, 0)
+       - With IN1 normed to IN2 this gives both polarities of full-rect
+     - rect-sum: IN1, IN2 -> MAX(IN1, 0) + MIN(IN2, 0), MIN(IN1, 0) + MAX(IN2, 0)
+       - This will do the reverse-connected BWHR trick, with the bonus
+         of a complementary output
 
 ** Unipolar/bipolar shifter
 
@@ -678,3 +706,49 @@
        makeup.
      - What about nonlinear elements? Would this be one way to make a
        morphable transfer function?
+
+** Oscillator
+
+*** I can't believe it's not digital
+
+    - Would love to have an analog oscillator that does FM synthesis
+      in perfect ratios like a digital oscillator
+    - The challenge is that while we might be able to get higher/lower
+      partials from a reference wave by analogue means, they would
+      then be coupled to the pitch of the reference wave and behave
+      strangely when FM is applied.
+    - Solution is to do phase modulation: mix signals into a good sine
+      shaper. (Sinulator subassembly would be acceptable?)
+      - This means that ideally the fundamental is a triangle wave and
+        the modulators are sine waves. But triangles would be ok, not
+        sure the difference is worth add lots of extra shapers for.
+    - Would it be a nice control scheme to mix several partials into a
+      master VC PM index (i.e. VCA to folder input mixer)?
+      - Would be good it possible to break out partials to other VCAs
+        and return them. Or just use another quad VCA...
+    - Partials 2, 4 are easy from a triangle wave: full rectifier
+      into ac-coupling and 2x gain.
+    - How to achieve partials 3 and 5?
+      - 3 could be done with a carefully calibrated wavefolder?
+	- Actually this should work really well, for a triangle wave a
+          single fold on each side gives x3.
+	  - Which means that two wavefolders in series gives x9
+	  - But one wavefolder with two folds (per side) gives x5 =)
+      - A digital sine bank would be easier, but where's the fun in
+        that? It would still avoid aliasing at high index, but there
+        would be a bit of trouble if real FM is thrown into the mix.
+      - The classic "wave multiplier" circuit uses a phase-locked loop
+        and clock divider. The inbuilt VCO of a PLL is a square wave,
+        so this setup would require an additional VCO. (Doesn't need
+        to have good tracking though, PLL sorts that out.) This is a
+        lot of chips for one partial...
+    - This module is starting to sound a lot like "feed a
+      harmonic/additive oscillator into FM Aid", which honestly isn't
+      a bad idea. Would be quite a different control set in practice.
+      - If partials are obtained from analogue fundamental, this does
+        raise the question of whether the core VCO should even be part
+        of the module.
+      - I think it should be so that the calibration is saved. But
+        maybe a normalised input would allow alternative signals to be
+        introduced? Should provide a decent (non-VC) gain control for
+        ad-hoc calibration then.
