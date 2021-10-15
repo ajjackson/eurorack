@@ -29,6 +29,10 @@
    - Modules are much more useful when they work for both CV and
      audio. (i.e. avoid AC-coupling, avoid ADCs with low sampling rates.)
 
+* Some interesting building blocks
+  - This paper reports a voltage multiplier (i.e. ring mod) using 3 op-amps.
+    http://nopr.niscair.res.in/bitstream/123456789/6896/1/IJPAP%2048%281%29%2067-70.pdf
+
 * Module concepts
 
 ** Comparator logic
@@ -95,6 +99,12 @@
      - clip inputs with 10V ESD zeners - costs range (and money)
      - use MCP6002/MCP6004 instead; these opamps are also cheap and
        designed for rail-to-rail inputs.
+       - datasheet says they only go to 6V? bah.
+       - LM324 should do the trick
+         - Trouble with LM324 is BJT input stage needs current; with
+           100k input impedence accuracy takes a hit.
+           - As long as it's consistent channel-to-channel that could
+             be fine in this application?
 
 ** Emphasis drive
 
