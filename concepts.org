@@ -696,3 +696,49 @@
        makeup.
      - What about nonlinear elements? Would this be one way to make a
        morphable transfer function?
+
+** Oscillator
+
+*** I can't believe it's not digital
+
+    - Would love to have an analog oscillator that does FM synthesis
+      in perfect ratios like a digital oscillator
+    - The challenge is that while we might be able to get higher/lower
+      partials from a reference wave by analogue means, they would
+      then be coupled to the pitch of the reference wave and behave
+      strangely when FM is applied.
+    - Solution is to do phase modulation: mix signals into a good sine
+      shaper. (Sinulator subassembly would be acceptable?)
+      - This means that ideally the fundamental is a triangle wave and
+        the modulators are sine waves. But triangles would be ok, not
+        sure the difference is worth add lots of extra shapers for.
+    - Would it be a nice control scheme to mix several partials into a
+      master VC PM index (i.e. VCA to folder input mixer)?
+      - Would be good it possible to break out partials to other VCAs
+        and return them. Or just use another quad VCA...
+    - Partials 2, 4 are easy from a triangle wave: full rectifier
+      into ac-coupling and 2x gain.
+    - How to achieve partials 3 and 5?
+      - 3 could be done with a carefully calibrated wavefolder?
+	- Actually this should work really well, for a triangle wave a
+          single fold on each side gives x3.
+	  - Which means that two wavefolders in series gives x9
+	  - But one wavefolder with two folds (per side) gives x5 =)
+      - A digital sine bank would be easier, but where's the fun in
+        that? It would still avoid aliasing at high index, but there
+        would be a bit of trouble if real FM is thrown into the mix.
+      - The classic "wave multiplier" circuit uses a phase-locked loop
+        and clock divider. The inbuilt VCO of a PLL is a square wave,
+        so this setup would require an additional VCO. (Doesn't need
+        to have good tracking though, PLL sorts that out.) This is a
+        lot of chips for one partial...
+    - This module is starting to sound a lot like "feed a
+      harmonic/additive oscillator into FM Aid", which honestly isn't
+      a bad idea. Would be quite a different control set in practice.
+      - If partials are obtained from analogue fundamental, this does
+        raise the question of whether the core VCO should even be part
+        of the module.
+      - I think it should be so that the calibration is saved. But
+        maybe a normalised input would allow alternative signals to be
+        introduced? Should provide a decent (non-VC) gain control for
+        ad-hoc calibration then.
