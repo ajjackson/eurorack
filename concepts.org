@@ -773,3 +773,92 @@
 
       - Saw-sine shaper with multiple folds (FM Aid, Sinulator)
         - These also provide CV over FM depth
+
+** VCAs
+
+*** PWM
+    - See ultrasonic processing notes
+    - PWM VCA is actually pretty simple, but unusual in audio paths
+      [due to a) clock noise b) availability of proper VCAs].
+      - High-speed saw VCO -> VC comparator -> FET/CMOS analog switch -> lowpass/slew
+      - Potential benefits are linearity and ability to mess around
+        with clock interactions.
+    - A neat module could be:
+      - inbuilt clock which can be bypassed by ext saw input
+      - Saw-multiplying rectifier series (Could use rotary switch or
+        CMOS to select number of stages!)
+      - Comparator with external CV creates PWM signal
+      - Simple passive low-pass/slew with a few switchable frequencies
+        (or manual pot?)
+	- No need for VC on this, run into an external filter/slew limiter
+          if you want to get fancy.
+      - Multiple VCAs can run off the same clock; cascaded mixing
+        outputs would be nice.
+	- In which case they need individual slew limiters but would
+          make sense to control them together. Analog-switched
+          presets would be much easier than a pot then!
+    - There are some possible variations on the switching element: as
+      well as an open/closed switch this could be a dual-throw between
+      resistors or a control signal to an
+      optocoupler. (i.e. optocoupler to ground acting as a chopper.)
+    - PWM signals can be used with logic gates: (N)OR for a "bypass",
+      (N)AND for an "enable/mute", XOR for pseudo-ring-mod of multiple
+      control signals (with gate it would become "invert" which is
+      also a pretty cool option).
+    - Should also be rather cheap in ICs! Can use a hexinverter as
+      oscillator and comparators? CMOS switches and XOR are
+      cheap. Most complicated part is looking to be the slew
+      limiters.
+      - What is a cheap/easy way for one panel control to set four
+        slew limiters? The sections don't have to be perfectly
+        matched, how about an LED/LDR arrangement?
+      - The catch is that the classic relaxation oscillator doesn't
+        make a nice linear sawtooth; PWM won't be linear.
+	- Won't matter in many applications but would be a problem for
+          ring mod.
+	- But what about using a comparator with the "triangle" wave?
+          Will that cancel out?
+	  - Playing around in numpy it looks like this doesn't
+            _perfectly_ cancel out, but it's not that bad. Why were we
+            focused on saw waves again? Ramps PWM just as well.
+    - Simple RC low-pass: series resistor followed by capacitor to
+      ground. Could be issue with gain interaction between this
+      resistor and an inverting output buffer. Maybe go non-inverting?
+
+      - f = 1/(2 pi R C) = (/ 1 (* 2 3.14159 1e7 1e-9)) = 16 Hz
+      - f = 1/(2 pi R C) = (/ 1 (* 2 3.14159 1e5 1e-9)) = 1.6 kHz
+      - f = 1/(2 pi R C) = (/ 1 (* 2 3.14159 1e3 1e-9)) = 160 kHz
+
+      - i.e. a 1nF capacitor and 100k resistance would give a 1.6 kHz
+        cutoff, about as low as we'd ever want to go, and 1k
+        resistance would take that to 160 kHz, higher than we'll ever
+        need. A 5506/5516 LDR ranges from around 5k to 500k, so quite
+        comparable. Could tune the range with additional
+        series/parallel resistors if necessary.
+
+    - Bipolar / ring-mod adaptation would be quite simple: chop an
+      inverted input signal at opposite polarity. Could do this with
+      NOT+SPST (mixing outputs) or by replacing CMOS SPST with SPDT
+      chip (no mix required!). Either way, they can share an output
+      filter and VCA mode is enabled by simply disconnecting the
+      inverted path.
+      - The biggest challenge might actually be shifting the CV input
+        range between 0-5V and +/-5V. Would be nice if that was on a
+        manual DPDT that also disconnects the inverted path.
+      - With decent clock/filter settings that could actually be quite
+        a decent ring mod? Nice and linear.
+
+
+*** Opto-isolated
+    - Modern opto-isolators on chips are faster, more linear and more
+      consistent than traditional vactrols. They seem under-used in
+      synthesiser design?
+    - Some accounts online of good experiences with H11F1 optocoupler
+      chip. Quite linear withing a certain range of operation, can
+      also add distortion beyond that.
+      - Account here of using one for a Doepfer CV mod; needs a simple
+        LED driver circuit (opamp CV input buffer + transistor current control)
+        http://navsmodularlab.blogspot.de/2013/01/a-143-1-modification.html
+    - NLC DP Filter calls for TLP521-2 dual optoisolator; the notes
+      list many alternatives, with roughly 50:50 split on whether they
+      are suitable for that circuit.
