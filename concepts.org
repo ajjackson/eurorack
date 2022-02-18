@@ -32,6 +32,23 @@
 * Some interesting building blocks
   - This paper reports a voltage multiplier (i.e. ring mod) using 3 op-amps.
     http://nopr.niscair.res.in/bitstream/123456789/6896/1/IJPAP%2048%281%29%2067-70.pdf
+    - Difficult to simulate this, it relies on abuse of op-amp power
+      supply and class AB properties?
+    - This Irvine/Fonik design is simpler, but my Falstad rendition doesn't
+      quite look right. It's an interesting composite function, but
+      not straight multiplication? http://www.modular.fonik.de/pix/VCRingMod.jpg
+      - https://modwiggler.com/forum/viewtopic.php?f=17&t=12384
+      - Maybe try again some time? They did make a working module...
+
+  - Optocouplers: the H11F1M is especially interesting, supporting a
+    bipolar input (i.e. it presents as a resistor) and being quite
+    linear.  The main drawback is that they're a little pricy; £25 for
+    10 from Mouser, and there are people on Amazon/Ebay trying to sell
+    them for £5 each! So in practice a bit more expensive than a VCA.
+    But still the properties seem interesting; I like the idea of
+    running a few of them off a shared current source. And compared to
+    a traditional vactrol the response is very fast; these can
+    plausibly to audio-rate modulation.
 
 * Module concepts
 
@@ -552,6 +569,18 @@
 
    - 4hp could be a squeeze for all those opamps!
 
+   - Tunnel diodes are interesting devices. Obsolete space tech, NOS
+     soviet stuff available at reasonable prices in small
+     quantities. Supposedly they are linear in the reverse direction,
+     while in forward bias the voltage-current curve folds down
+     through a "negative resistance" region before reverting to
+     linearity. Could make an interesting wavefolder, with two catches:
+     - I can't find a nice V-I plot with both positive and negative
+       regions in detail; need to measure for a particular batch anyway!
+     - This all happens in a range of about 1V, so like a Si clipper
+       will need to do some gainstaging.
+
+
 *** Other folders
     - The Buchla wavefolder design is interesting as it doesn't use
       diodes; the clipping is done with op-amp rails.
@@ -997,3 +1026,67 @@
       - Mutes mode: first four bits mask inputs which are mixed to output
       - Mixer mode: four pairs of bits are interpreted as 2-bit amp gain values
       - Scanner mode: 8-bit number is interpreted as scanner position. (Fixed width?)
+
+** Polynomial waveshaper
+
+   - Interesting Alfa (CEM clone) chip, AS3363 consists of two VC
+     polariser/amplifer sections and one VC crossfader/amplifier
+     section.
+   - The crossfader could easily be configured or even normed as a
+     polariser by inverting one input and sending it to the other.
+   - The main annoying aspect of this chip is the required level
+     shifting; audio voltages should be < 50mV, while control voltages
+     are at +/- 2V and current outputs run up to 100 uA (200mV).
+     - The suggested current follower has a 47k feedback resistor
+       - 100 uA across 47k -> 4.7V. So 100k would still be _bit_
+         stingy for Eurorack, maybe 200k would give a decent output
+         boost?
+   - An interesting/novel arrangement of these blocks would be to use
+     voltage multipliers to get a set of polynomial terms and feed
+     them into a mixer:
+
+     1, x, x^2, x^3 could be obtained with two multipliers, and x^4
+     with a third.
+
+     A lot can be achieved by normalisation, allowing users to inject
+     more signals or use the ring mods independently. But this could
+     eat up extra panel space and opamps (for extra level shifts).
+
+   - With a minimal feature set this could be quite a compact module:
+     - Input/output jacks
+     - Four knobs giving x^(1,2,3,4) terms
+     - (Without any CV tools, the offset control is not so exciting)
+   
+   - Alternatively we could use the crossfader for wet/dry:
+     - 2x Input/output jacks
+     - 2x Crossfade jacks: CV, Aux (normed from input buffer)
+     - Four knobs for x^(0, 1, 2, 3)
+
+     - Here's an interesting patch with this setup: if you set the
+       knobs so that f(x) = -x then the xfade CV can be used as a
+       voltage polariser. Quite difficult to dial this precisely
+       though.
+
+   - The trouble with these minimal designs is that they
+     - can't be used as a set of independent VC polarisers (which is a
+       nice building block for patching)
+
+     - Don't allow morphing between different polynomials. Needs moar
+       CV!
+       - That being said, obviously this will respond well to an input
+         VCA for a bit of VC waveshaping.
+
+       - If it comes out reasonably compact/simple, you can have two and
+         connect them through the crossfader
+
+     - Still need a lot of opamps. Each polarising mixer
+       channel requires two.
+
+   - But putting it all under voltage control would need a _second_
+     set of VC polarizers for the mixing. It could even use a second
+     3363 chip...
+       
+     - Size/ergonomics also become a bit of a concern. Do we really
+       want 8 knobs for the mixer (level + CV)? Perhaps a "morph
+       all" control? Maybe this can be simplified somehow.
+
