@@ -167,6 +167,20 @@
      at £4 is an updated take on the classic SSM2040. CEM 3320 should
      also be able to do it.
 
+   - Digital implementation also has a lot going for it. Perfect
+     matching between filters, aliasing a non-issue (can do saturation
+     in analogue domain.) Initial daisy/bluemchen implementation seems
+     really good.
+     - Digital implementation would also allow multiple operation modes:
+       - Peak filter
+       - Shelf filter
+       - Linear tilt (might be able to borrow airwindows code for that?)
+       - Nonlinear transfer functions (i.e. ulaw encode/decode.) This
+         _would_ introduce aliasing, but may be ok as a bonus
+         mode. (And tbh a 96 kHz, 24-bit oversampled implementation
+         would be far better than real-world versions used in the
+         past.)
+
 ** Fixed-band EQ
 
    - Inspiration: a 4-fixed-bands EQ was conceived as a nice user interface for an
@@ -603,6 +617,11 @@
        - This will do the reverse-connected BWHR trick, with the bonus
          of a complementary output
 
+   - A simple multi-stage full-rectifier would also make a useful
+     complement to the scanner/sequencer below.
+     - An interesting twist would be an AC/DC-coupling selector. (With
+       trimmable bias voltage for DC mode?)
+
 ** Unipolar/bipolar shifter
 
    - An interesting circuit related to a clipper that I haven't really
@@ -862,3 +881,119 @@
     - NLC DP Filter calls for TLP521-2 dual optoisolator; the notes
       list many alternatives, with roughly 50:50 split on whether they
       are suitable for that circuit.
+
+
+** Scanner
+   - There are only a few VC "scanner" modules out there for panning
+     between multiple outputs.
+     - Fourcaster is a nice design but a bit single-purpose
+     - Verbos Scan&Pan is based on a stereo-mixer concept
+     - Super Synthesis Scanner is compact and reasonably priced, but
+       only supplies the CV - need to add your own quad VCA
+     - Blind monk quad looks cool; more of a quad VCA interface with
+       scanning mode.
+     - Segwencer 2.0 looks like a nicely balanced design, although it
+       lacks CV over spread/width.
+
+   - Creating and manipulating the CV ramps in analogue seems quite
+     challenging/expensive and this could be a good job for a hybrid
+     digital/analogue module. Effectively the module would be a
+     digitally-controlled quad VCA. Audio-rate control is sacrified
+     for more complex/versatile control-rate options
+
+   - An interesting design approach could be to frame it as a
+     "sequencer" rather than a mixer - draw inspiration from the ARP
+     1050 mix-sequencer (which has a nice reissue by CMS and
+     rework by NLC.)
+
+*** Interface elements
+
+**** 4 audio/CV inputs
+     - These go through an analogue signal path with wide bandwidth
+       and DC coupling
+**** Input attenuverters
+     - These could be "precision attenuverters"; Kassutronics
+       demonstrated how to implement a one-opamp attenuverter with
+       fine control near zero
+       https://kassu2000.blogspot.com/2018/04/precision-attenuverter-mixer.html
+     - Inputs can be normalled to DC voltage, so these controls allow
+       a manual sequence to be dialed in without additional inputs.
+**** Mix output
+     - One is probably enough
+**** Individual outputs
+     - Can probably get away without these, but a maximally-patchable
+       implementation could break these out (and norm them to a mixer).
+**** Cascaded rectifiers
+     - I really like the idea of norming a chain of rectifiers to the
+       inputs as it creates a sweepable even-harmonic generator. It
+       should really be a separate module though, especially if we
+       already have normalled DC input.
+**** Mode selection
+     - Could be CV addressable but a button is fine and less hassle.
+**** Mode indicator
+     - Multicolour LED is possible but should be well integrated into
+       panel graphics or not really user-friendly
+**** Visual feedback
+     - Prefer LEDs to screen if possible
+     - Could be a good project for learning to run a bunch of LEDs
+       with shift register. (3 output pins needed, plus one 595 chip
+       per 8 bits of data.)
+     - LED per output would be quite intuitive for scanner mode.
+       - With an 8-bit shift register we could drive each LED with 2
+         bits for 4 stages of brightness.
+       - Adafruit do these fancy digitally-addressable RGB LEDs, can
+         run any number off a few GPIO pins. Colour could indicate
+         mode, while pattern indicates state.
+
+     - Adafruit do a nice 10-segment bar chart with 0.1" pitch. We
+       could just mask out two of them to make an 8-segment...
+       - Scanner mode: Separated blocks represent outputs. A few bits
+         of resolution needed to show fade.
+
+       - Sequencer mode: Use brightness levels to show current
+         step and Euclidean active steps.
+
+         | Level | Meaning |
+         |-------+---------|
+         |    00 | Unused  |
+         |    01 | Rest    |
+         |    10 | Filled  |
+         |    11 | Active  |
+
+       - LFSR modes: shift register data. Again /could/ use brightness
+         to indicate loop length, but may be more useful to allow > 8
+         steps and just show the upcoming data. Could also use
+         brightness to indicate which bits are used.
+
+**** Algorithm control
+     - Some combination of CV input jacks and knobs. Some algorithms
+       would benefit from gate inputs?
+
+*** Operation modes
+    - Scanner
+      - Parameters are position and width
+        - Manual control over both and CV position are vital. CV width
+          is nice-to-have.
+      - At width = zero, we have an addressable switch
+      - At width = infinity, we have a mixer
+      - Very nice, very mutable!
+    - Sequencer
+      - Clock input, reset input
+        - nice-to-have: clock divider, Euclidean controls, width control
+        - Clock-divider is nearly a subset of Euclidean anyway, so
+          perhaps that can be covered by a single Euclidean mode...
+          - In which case it needs to be very clear how long the sequence is
+          - 10 or 12-segment LED bar chart would look nice but need a
+            lot of controlling
+          - And a bit overkill for other modes?
+    - Looping shift register
+      - A shift register provides bytes which can be interpreted in
+        various ways
+      - Parameters: Loop length, flip probability (like Turing machine), clock
+        - Nice-to-have: data input. Some kind of reset (or non-clocked rotation?)
+        - Additionally we need a way to choose how the data is
+          interpreted. Could be related to mode switch?
+      - Switch mode: first two bits address a single input which is sent to output
+      - Mutes mode: first four bits mask inputs which are mixed to output
+      - Mixer mode: four pairs of bits are interpreted as 2-bit amp gain values
+      - Scanner mode: 8-bit number is interpreted as scanner position. (Fixed width?)
