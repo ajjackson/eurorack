@@ -29,6 +29,20 @@
    - Modules are much more useful when they work for both CV and
      audio. (i.e. avoid AC-coupling, avoid ADCs with low sampling rates.)
 
+** Appearance
+   - I've been playing with pretty serif fonts but I know it isn't
+     really best-practice for small functional labels.
+     - Proza libre looks promising:
+       https://fonts.google.com/specimen/Proza+Libre Legible at tiny
+       size, but a a bit of that exotic vibe. Medium weight could be
+       best for labels.
+       - Commercial version of Proza is a bit more playful, Libre
+         might render better.
+     - Merriweather Sans is similar and available in more weights. A
+       bit more conservative?
+       https://fonts.google.com/specimen/Merriweather+Sans
+       - There's a serif version, too
+
 * Some interesting building blocks
   - This paper reports a voltage multiplier (i.e. ring mod) using 3 op-amps.
     http://nopr.niscair.res.in/bitstream/123456789/6896/1/IJPAP%2048%281%29%2067-70.pdf
@@ -197,6 +211,26 @@
          mode. (And tbh a 96 kHz, 24-bit oversampled implementation
          would be far better than real-world versions used in the
          past.)
+       - low-shelf / peak / high-shelf would be very natural to select
+         with a 3-way toggle switch. Simple implementation would be an
+         on/off/on that grounds two GPIO pins. Internal pull-up means
+         this is detected. On/on/on would also work if that switch is
+         more available, just needs different logic.
+         https://electro-smith.github.io/libDaisy/md_doc_md__a1__getting__started__g_p_i_o.html
+
+   - Clipping stage design: have put a mock-up in Falstad folder. But
+     basically a TL072 will do it.
+     - Two inverting op-amp stages
+     - Stage 1: 100k input, 47k feedback and (22k + 2x 1N4148) soft-clip feedback
+     - Interstage hard-clip: 2.2k -> 2x 4148 to gnd -> 10k -> summing node
+     - Stage 2: 100k feedback, 1k output
+
+     Stage 2 feedback controls final gain, interstage resistors
+     control hard-clipping point. Soft-clipping ratio is ~ 2:1
+
+     According to Falstad, 1N4148 hard-clipping isn't really that hard
+     in this configuration. Better check on breadboard. It should
+     sound nice anyway.
 
 ** Fixed-band EQ
 
@@ -357,6 +391,15 @@
    - Is there any reason you couldn't do the same thing with SSI2140?
      Would that be easier? We don't need independent frequency control
      in this application.
+
+** More filters
+   - Lots of nice chips about for making filters, but how to go beyond
+     the obvious?
+   - Well, most VCFs are based on a Butterworth design, minimising
+     ripple. Would it be possible to use these chips (or OTA
+     Sallen-Key) to implement Chebyshev and Elliptic filters with lots of
+     ripple? That could give "chewy" phaser-ish effect along with a
+     steeper slope.
 
 ** Rungler
 
@@ -822,6 +865,107 @@
       - Saw-sine shaper with multiple folds (FM Aid, Sinulator)
         - These also provide CV over FM depth
 
+*** DCO
+    - AS 3397 is £12 SOIC-28 chip that provides two DCO
+      accumulator/waveshaper sections, a 4-pole filter and some
+      VCAs. Could be paired with a microcontroller to make a sort of
+      mono-Matrix?
+      - It's heavily based on the CEM3396 used in Cheetah/Matrix and
+        allegedly DSI Evolver
+    - It's tempting to skip the filter for simplicity, but actually
+      this thing has inbuilt filter-FM from OSC1 and that's awesome.
+    - With two oscs and a V/oct-tracking FMable filter, we should be
+      able to create a few different oscillator modes from a single
+      V/oct input. Maybe that would give an interesting interface?
+    - Alternatively, a stripped-back implementation could break out
+      the clock and waveshape system to Eurorack levels. This seems in
+      the spirit of modular and I don't know of any other module that
+      does it.
+      - Microprocessor becomes a simultaneous VCO and waveshaper (as
+        the V/oct is warped to provide the waveshape CV)
+      - Other modules can be used to clock and control waveshape
+    - Unfortunately it is difficult to entirely separate the VCO and
+      filter sections. Pin 15 can be used to obtain pre-filter VCO mix
+      or to add another signal to filter.
+    - Traditionally pin 15 would not exist and external signals are
+      injected at pin 18, experiencing a 3-stage filter. It's not
+      clear that this would remove the VCO mix, though?
+      - So how does the Evolver allow you to turn down DCOs relative
+        to wavetable?
+        - It has two filters, so maybe it uses two 3396s? That's not a
+          /complete/ explanation... maybe it is actually a custom chip.
+      - Another trick is to connect an input to pin 5 (i.e. waveshaper
+        timing capacitor); this signal will stop that DCO working and
+        effectively replace it.
+    - Looking at some of the waveforms achievable by different
+      PWM/waveshape settings, it may be that this thing is severely
+      underrated on LFO duty! Especially given that it could be clock
+      synced...
+
+
+*** DDS
+    - AD8933 chip implements direct digital synthesis (DDS) with its
+      own clock and covers a wide frequency range. Don't need a very
+      fancy microcontroller to control this with i2c (but maybe do for
+      FM-rate updates?) Has basic waveform outs and phase modulation.
+    - A popular option for DIY function generators (for testing etc)
+      but there are a few people out there using them in synthesisers.
+      - Modwiggler discussion: update rate with arduino is a bit slow
+        for FM, at about 1ms. The AD8933 can receive messages much
+        faster than this, limiting factor at the moment is probably
+        Arduino calculations. Not clear if IC update speed could be
+        FM-worthy with faster input?
+
+*** 4-op FM
+    - I'm really liking the form factor of my NLC dual oscillator; two
+      identical channels with two knobs, one switch and four jacks -
+      and an interesting interaction between step channels.
+    - Eurorack FM/PM modules tend to either be big and complex to
+      control lots of operators (Akemie's Castle), flexible 1-op (FM Ogre) or
+      simple 2-op (Plaits etc).
+    - How about a "dual 2-op" scheme? Then a few FM algorithms can be
+      achieved by patch programming.
+      - Switchable FM/PM input between the 2-op carrier and modulator
+      - Disconnected left output normalled to mix with right output.
+      - Disconnected right output normalled to disconnected left FM input.
+
+**** Controls
+     The trouble is there really are a lot of parameters to control!
+
+***** Knobs
+      - Carrier freq
+        - Could have a button to toggle this between "range", "coarse"
+          and/or "fine". Plaits approach is also neat. Maybe a "lock"
+          mode is also useful.
+      - Modulator freq
+        - Tempting to limit this to ratios, requiring external input
+          to detune
+      - Mod depth
+        - Could be bipolar with dead spot, but is that actually
+          useful? Nonlinear scale could be.
+      - Ext mod depth
+        - Optional but useful, can be done with external attenuator/VCA
+
+***** Switches
+      - Freq knob scale
+      - Mod inputs could have selectable mode, e.g. FM/PM/sync
+      - Select whether mod input targets carrier or modulator
+
+***** CV
+      - V/oct
+      - FM/PM (AC-coupled)
+      - FM/PM (DC-coupled)
+      - Sync - The input I really miss on Plaits! Synced FM seems
+        quite rare in digital world.
+      - Mod depth
+      - Output VCA (it's free, and can be used in self-patching)
+
+***** Other modes/parameters to consider
+      - Modulation scaling: Lin/Exp/thru-0/synced(KarmaFX method)
+      - Waveform
+      - Switchable lookup table quality, antialiasing, interpolation,
+        bit depth, ...
+      
 ** VCAs
 
 *** PWM
@@ -935,6 +1079,14 @@
      1050 mix-sequencer (which has a nice reissue by CMS and
      rework by NLC.)
 
+   - A high-quality implementation would use a quad DAC and quad
+     VCA. But a lo-fi basic implementation could use PWM-controlled
+     DIY vactrols! Add a capacitor and we have a 1-pole lowpass-gate
+     channels. They'll sound a bit darker especially at low levels but
+     that could be quite charming. For personal use it's feasible to
+     calibrate the channels and burn the corresponding coefficients
+     into the firmware for minimal overhead.
+
 *** Interface elements
 
 **** 4 audio/CV inputs
@@ -994,6 +1146,9 @@
          steps and just show the upcoming data. Could also use
          brightness to indicate which bits are used.
 
+     - If using vactrols to control level, another LED in series will
+       give a perfectly good channel indicator "for free".
+
 **** Algorithm control
      - Some combination of CV input jacks and knobs. Some algorithms
        would benefit from gate inputs?
@@ -1015,6 +1170,10 @@
           - 10 or 12-segment LED bar chart would look nice but need a
             lot of controlling
           - And a bit overkill for other modes?
+    - Vector
+      - Four inputs represent "corners" in 2-D space
+      - Continuous controls give X/Y coordinate for interpolation.
+
     - Looping shift register
       - A shift register provides bytes which can be interpreted in
         various ways
@@ -1026,6 +1185,27 @@
       - Mutes mode: first four bits mask inputs which are mixed to output
       - Mixer mode: four pairs of bits are interpreted as 2-bit amp gain values
       - Scanner mode: 8-bit number is interpreted as scanner position. (Fixed width?)
+
+    - Scanner and sequencer could be the same mode, with the following controls:
+      - position (knob/CV)
+      - width (knob/CV)
+      - rotate (gate input)
+      - reset (gate input)
+
+      This reduces to a sequencer when width and position are set to
+      zero. Rotate inputs increment a counter which is added to
+      position, with the total wrapped into the appropriate range.
+
+    - Mode select could be an On/off/momentary toggle switch:
+      - Left (on) selects mixer/sequencer mode
+      - Mid (off) selects LFSR
+      - Right (momentary) cycles through LFSR modes.
+
+      Momentary both ways is an option to access more modes
+      (e.g. vector) but then better visual indication is needed to
+      distinguish modes.
+
+      Or a sequence/vector switch could change behaviour of all modes?
 
 ** Polynomial waveshaper
 

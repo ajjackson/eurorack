@@ -1,0 +1,66 @@
+#+TITLE: Module designs
+
+* Status summary
+
+** Active
+
+  | Concept           | Name            | Status          | Next step                        |
+  |-------------------+-----------------+-----------------+----------------------------------|
+  | CMOS clipper      | LlamaLlamaDuck  | Built           | Blog / video                     |
+  |                   |                 |                 |                                  |
+  | Simple IO         |                 | Rough schematic | Decide multicore wire setup      |
+  |                   |                 |                 |                                  |
+  | Comparator logic  | Compara4        | Schematic       | Breadboarding, panel             |
+  |                   |                 |                 |                                  |
+  | Emph/De-emph      | Emphasis        | Digital proto   | Breadboarding, panel             |
+  |                   |                 |                 |                                  |
+  | Scanner/sequencer | Digital Scanner | Concept         | Breadboarding, digital           |
+  |                   |                 |                 |                                  |
+  | Polynomial shaper |                 | Concept         | Rework schematic, test an AS3363 |
+  |                   |                 |                 |                                  |
+  | AS3363 breakout   |                 | Concept         | Panel, test an AS3363            |
+  |                   |                 |                 |                                  |
+  | Resonator/vowels  |                 | Early           | Bluemchen patch                  |
+
+
+** Parked
+
+   | Concept                 | Status          | Issues                                                  |
+   |-------------------------+-----------------+---------------------------------------------------------|
+   | 4-band EQ               | Concept         | Not that interesting compared to Emphasis;              |
+   |                         |                 | complex if analogue                                     |
+   |                         |                 |                                                         |
+   | Digipot pole-mixing VCF | Concept         | Needs more distinction from existing stuff;             |
+   |                         |                 | ok, digipot implementation is different but             |
+   |                         |                 | features same as Polaris, SMR4P                         |
+   |                         |                 |                                                         |
+   | Rungler                 | Stop            | 8-bit cipher should suit me well                        |
+   |                         |                 |                                                         |
+   | Bussed clock div        | Early concept   |                                                         |
+   |                         |                 |                                                         |
+   | Clippers                | Building blocks | Redundancy, choosing best combination!                  |
+   |                         |                 |                                                         |
+   | BYO wavefold            | Early concept   | Not happy with initial schematic ideas                  |
+   |                         |                 |                                                         |
+   | Rectifiers              | Schematic       | Good synergy with Scanner, wait for that                |
+   |                         |                 |                                                         |
+   | Switching filter        | Early concept   | Figure out relationship with VCOs. Inbuilt?             |
+   |                         |                 | Multi-rectify external? Barton SRV looks                |
+   |                         |                 | very interesting.                                       |
+   |                         |                 |                                                         |
+   | VCO: harmonic FM        | Concept         | Rectifiers & Scanner break out subunits of this         |
+   |                         |                 |                                                         |
+   | DCO                     | Early concept   | Get an AS3397 and play with it. What are the            |
+   |                         |                 | real advantages over pure digital? 3397 signal          |
+   |                         |                 | path is funny, can't quite use VCO & VCF                |
+   |                         |                 | independently. Resonant filter FM could make            |
+   |                         |                 | an interesting "VCO" block.                             |
+   |                         |                 |                                                         |
+   | Digital 4-op FM         | Early concept   | Need to get more experience with Daisy VCO              |
+   |                         |                 | programming. Challenge deciding panel/controls.         |
+   |                         |                 |                                                         |
+   | PWM VCA                 | Early concept   | High freq is scary! Concept needs tightening.           |
+   |                         |                 | Might just sound bad and not add much over OTA?         |
+   |                         |                 |                                                         |
+   | AS3350 dual filter      | Early concept   | Marsupial exists, need some novel vowel filter controls |
+   |                         |                 |                                                         |
