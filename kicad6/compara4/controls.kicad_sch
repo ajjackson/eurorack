@@ -1080,7 +1080,7 @@
     (pin "TN" (uuid 80fd2ac1-6fd5-4dbe-9921-015d05b6dda9))
   )
 
-  (symbol (lib_id "Device:R_Potentiometer") (at 104.14 48.26 90) (unit 1)
+  (symbol (lib_id "Device:R_Potentiometer") (at 104.14 48.26 270) (mirror x) (unit 1)
     (in_bom yes) (on_board yes) (fields_autoplaced)
     (uuid e2236b5f-93eb-4ed4-b730-a5698826cb50)
     (property "Reference" "RV1" (id 0) (at 104.14 52.07 90))
